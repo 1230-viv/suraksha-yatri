@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-9095e464249db599b7bfa8b710d4e920ca08a904",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/TouristID.sol": "project/contracts/TouristID.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/TouristID.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract TouristID {\n    struct KYCInfo {\n        string name;\n        string passport; // Will store Aadhaar for Indian citizens\n        string dateOfBirth;\n        string nationality;\n        string phoneNumber;\n        string entryPoint;\n    }\n    \n    struct TripInfo {\n        string arrivalDate;\n        string departureDate;\n        string primaryDestination;\n        string purposeOfVisit;\n        string accommodationDetails;\n        string itinerary;\n    }\n    \n    struct EmergencyInfo {\n        string emergencyContactName;\n        string emergencyContactPhone;\n        string emergencyContactRelation;\n        string emergencyContactAddress;\n        string localEmergencyContact;\n    }\n    \n    struct Tourist {\n        KYCInfo kyc;\n        TripInfo trip;\n        EmergencyInfo emergency;\n        string userType; // 'indian' or 'foreign'\n        uint256 validUntil;\n        uint256 registrationTimestamp;\n        bool isActive;\n    }\n\n    mapping(address => Tourist) public tourists;\n    mapping(string => address) public passportToAddress; // For quick passport lookup\n    \n    event TouristRegistered(\n        address indexed walletAddress,\n        string passport,\n        string name,\n        string userType,\n        uint256 validUntil\n    );\n    \n    event TouristUpdated(\n        address indexed walletAddress,\n        string passport\n    );\n\n    function registerTourist(\n        KYCInfo memory kycInfo,\n        TripInfo memory tripInfo,\n        EmergencyInfo memory emergencyInfo,\n        string memory userType,\n        uint256 validUntil\n    ) public {\n        require(bytes(kycInfo.name).length > 0, \"Name is required\");\n        require(bytes(kycInfo.passport).length > 0, \"Passport/Aadhaar is required\");\n        require(validUntil > block.timestamp, \"Valid until must be in the future\");\n        \n        // Check if passport is already registered\n        if (passportToAddress[kycInfo.passport] != address(0) && passportToAddress[kycInfo.passport] != msg.sender) {\n            revert(\"Passport/Aadhaar already registered to another address\");\n        }\n        \n        tourists[msg.sender] = Tourist({\n            kyc: kycInfo,\n            trip: tripInfo,\n            emergency: emergencyInfo,\n            userType: userType,\n            validUntil: validUntil,\n            registrationTimestamp: block.timestamp,\n            isActive: true\n        });\n        \n        passportToAddress[kycInfo.passport] = msg.sender;\n        \n        emit TouristRegistered(msg.sender, kycInfo.passport, kycInfo.name, userType, validUntil);\n    }\n\n    function getTourist(address user) public view returns (Tourist memory) {\n        return tourists[user];\n    }\n    \n    function getTouristByPassport(string memory passport) public view returns (address, Tourist memory) {\n        address userAddress = passportToAddress[passport];\n        require(userAddress != address(0), \"Tourist not found\");\n        return (userAddress, tourists[userAddress]);\n    }\n    \n    function updateTouristStatus(address user, bool status) public {\n        require(tourists[user].registrationTimestamp > 0, \"Tourist not found\");\n        tourists[user].isActive = status;\n        emit TouristUpdated(user, tourists[user].kyc.passport);\n    }\n    \n    function isValidTourist(address user) public view returns (bool) {\n        Tourist memory tourist = tourists[user];\n        return tourist.isActive && \n               tourist.validUntil > block.timestamp && \n               tourist.registrationTimestamp > 0;\n    }\n    \n    function getTouristCount() public view returns (uint256) {\n        // Note: This is a simplified counter, in production you'd want to maintain an actual counter\n        return 0; // Would need to implement proper counting mechanism\n    }\n}"
+      }
+    }
+  }
+}
